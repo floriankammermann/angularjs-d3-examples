@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html ng-app="d3DemoApp">
+<head>
+  <meta charset="utf-8">
+  <title>AngularJS + D3.js</title>
+  <script src="lib/d3/d3.v3.js" charset="utf-8"></script>
+  <script src="lib/angular/angular-1.0.6.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/controllers.js"></script>
+  <script src="js/directives.js"></script>
+  <script src="js/filters.js"></script>
+  <style>
+      .node rect {
+          cursor: pointer;
+          fill: #fff;
+          fill-opacity: .5;
+          stroke: #3182bd;
+          stroke-width: 1.5px;
+        }
+
+        .node circle {
+            cursor: pointer;
+            fill: #fff;
+            stroke: steelblue;
+            stroke-width: 1.5px;
+         }
+        .node text {
+          font: 10px sans-serif;
+          pointer-events: none;
+        }
+        path.link {
+          fill: none;
+          stroke: #9ecae1;
+          stroke-width: 1.5px;
+        }
+  </style>
+</head>
+<body ng-controller="AppCtrl">
+    filter: <input ng-model="treedatafilter"> {{treedatafilter}} <br>
+    <demo-elem treedatafilter="treedatafilter"></demo-elem>
+    <d3-tree></d3-tree>
+</body>
+</html>
