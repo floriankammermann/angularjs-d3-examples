@@ -90,7 +90,7 @@ function update(layoutRoot, tree, link, scope, filterValue) {
 
 }
 
-d3DemoApp.directive('demoElem', function () {
+d3DemoApp.directive('d3Tree', function () {
     return {
         restrict: 'E',
         scope: {

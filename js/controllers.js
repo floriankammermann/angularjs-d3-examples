@@ -22,7 +22,7 @@ d3DemoApp.controller('AppCtrl', function AppCtrl ($scope, $http) {
     name: "root",
     children: [
             {
-                name: "angufuckingular",
+                name: "anguuuuular",
                 children: [
                     { name: "Mail.app" },
                     { name: "Pages.app" }
