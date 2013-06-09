@@ -17,77 +17,116 @@ function toggleAll(d) {
     }
 }
 
-function update(layoutRoot, tree, link, scope, filterValue) {
+// if we don't initialize it here, something with the scope is going wrong
+var i = 0;
 
-    var clonedTreeData = scope.clonedTreeData;
+function update(layoutRoot, tree, rootOfTree, clickedNode) {
+    
+    if(typeof clickedNode == 'undefined') {
+        clickedNode = rootOfTree;
+    }
 
-                for(var i = 0; i < clonedTreeData.children.length; i++) {
-                    if(clonedTreeData.children[i].children) {
-                        for(var j = 0; j < clonedTreeData.children[i].children.length; j++){
-                            var name = clonedTreeData.children[i].children[j].name;
-                            if((!!filterValue) && name.indexOf(filterValue) === -1) {
-                                clonedTreeData.children[i].children.splice(j, 1);
-                                //if we don't decrease j, it will point to the wrong index
-                                j--;
-                            }
-                        }
-                    }
-                }
+    var duration = d3.event && d3.event.altKey ? 5000 : 500;
 
-               var nodes = tree.nodes(clonedTreeData);
-                var links = tree.links(nodes);
+    var diagonal = d3.svg.diagonal()
+                     .projection(function(d) { return [d.y, d.x]; });
 
-                layoutRoot.selectAll('*').remove();
+    var source = clickedNode;
 
-                layoutRoot.selectAll("path.link")
-                           .data(links)
-                           .enter()
-                           .append("svg:path")
-                           .attr("class", "link")
-                           .attr("d", link);
+  var duration = d3.event && d3.event.altKey ? 5000 : 500;
 
-                /*
-                     Nodes as
-                     <g class="node">
-                         <circle class="node-dot" />
-                         <text />
-                     </g>
-                  */
-                 var nodeGroup = layoutRoot.selectAll("g.node")
-                     .data(nodes)
-                     .enter()
-                     .append("svg:g")
-                     .attr("class", "node")
-                     .on("click", function(d) { 
-                         toggle(d); 
-                         update(layoutRoot, tree, link, scope, filterValue); 
-                     })
-                     .attr("transform", function(d)
-                     {
-                         return "translate(" + d.y + "," + d.x + ")";
-                     });
+  // Compute the new tree layout.
+  var nodes = tree.nodes(rootOfTree).reverse();
 
-                 nodeGroup.append("svg:circle")
-                     .attr("class", "node-dot")
-                     .attr("r", 5);
-
-                 nodeGroup.append("svg:text")
-                          .attr("text-anchor", function(d)
-                           {
-                               return d.children ? "end" : "start";
-                           })
-                          .attr("dx", function(d)
-                           {
-                                var gap = 2 * 5;
-                                return d.children ? -gap : gap;
-                           })
-                          .attr("dy", 3)
-                          .text(function(d)
-                           {
-                                return d.name;
-                           });
+  // Normalize for fixed-depth.
+  nodes.forEach(function(d) { d.y = d.depth * 180; });
 
 
+  // Update the nodes#
+  var node = layoutRoot.selectAll("g.node")
+                       .data(nodes, function(d) { 
+                           var idToRet = d.id || (d.id = ++i);
+                           return  idToRet
+                       });
+
+  // Enter any new nodes at the parent's previous position.
+  var nodeEnter = node.enter().append("svg:g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
+      .on("click", function(d) { 
+          toggle(d); 
+          update(layoutRoot, tree, rootOfTree, d, i); 
+      });
+
+  nodeEnter.append("svg:circle")
+      .attr("r", 1e-6)
+      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+
+  nodeEnter.append("svg:text")
+      .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+      .attr("dy", ".35em")
+      .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
+      .text(function(d) { return d.name; })
+      .style("fill-opacity", 1e-6);
+
+  // Transition nodes to their new position.
+  var nodeUpdate = node.transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+  nodeUpdate.select("circle")
+      .attr("r", 4.5)
+      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+
+  nodeUpdate.select("text")
+      .style("fill-opacity", 1);
+
+  // Transition exiting nodes to the parent's new position.
+  var nodeExit = node.exit().transition()
+      .duration(duration)
+      .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
+      .remove();
+
+  nodeExit.select("circle")
+      .attr("r", 1e-6);
+
+  nodeExit.select("text")
+      .style("fill-opacity", 1e-6);
+
+  // Update the links#
+  var link = layoutRoot.selectAll("path.link")
+      .data(tree.links(nodes), function(d) { return d.target.id; });
+
+  // Enter any new links at the parent's previous position.
+  link.enter().insert("svg:path", "g")
+      .attr("class", "link")
+      .attr("d", function(d) {
+        var o = {x: source.x0, y: source.y0};
+        return diagonal({source: o, target: o});
+      })
+    .transition()
+      .duration(duration)
+      .attr("d", diagonal);
+
+  // Transition links to their new position.
+  link.transition()
+      .duration(duration)
+      .attr("d", diagonal);
+
+  // Transition exiting nodes to the parent's new position.
+  link.exit().transition()
+      .duration(duration)
+      .attr("d", function(d) {
+        var o = {x: source.x, y: source.y};
+        return diagonal({source: o, target: o});
+      })
+      .remove();
+
+  // Stash the old positions for transition.
+  nodes.forEach(function(d) {
+    d.x0 = d.x;
+    d.y0 = d.y;
+  });
 }
 
 d3DemoApp.directive('d3Tree', function () {
@@ -132,26 +171,38 @@ d3DemoApp.directive('d3Tree', function () {
                                 .attr("class", "container")
                                 .attr("transform", "translate(" + maxLabelLength + ",0)");
 
-        // Edges between nodes as a <path class="link" />
-         var link = d3.svg.diagonal()
-                          .projection(function(d)
-                            {
-                                return [d.y, d.x];
-                            });
-
             scope.$watch('treedatafilter', function(newVal, oldVal){
                 var clonedTreeData = JSON.parse(JSON.stringify(treeData));
+                clonedTreeData.x0 = size.height / 2;
+                clonedTreeData.y0 = 0;
                 scope.clonedTreeData = clonedTreeData;
 
                 // Initialize the display to show a few nodes.
                 if(typeof newVal == 'undefined') {
                     clonedTreeData.children.forEach(toggleAll);
-                    toggle(clonedTreeData.children[1]);
+                    // toggle(clonedTreeData.children[1]);
                 }
-                
-                update(layoutRoot, tree, link, scope, newVal);                           
-            });
             
+                var clonedTreeData = scope.clonedTreeData;
+                var filterValue = newVal;
+
+                if(clonedTreeData.children) {
+                    for(var i = 0; i < clonedTreeData.children.length; i++) {
+                        if(clonedTreeData.children[i].children) {
+                            for(var j = 0; j < clonedTreeData.children[i].children.length; j++){
+                                var name = clonedTreeData.children[i].children[j].name;
+                                if((!!filterValue) && name.indexOf(filterValue) === -1) {
+                                    clonedTreeData.children[i].children.splice(j, 1);
+                                    //if we don't decrease j, it will point to the wrong index
+                                    j--;
+                                }
+                            }
+                        }
+                    }
+                }
+                 
+                update(layoutRoot, tree, clonedTreeData, clonedTreeData);                           
+            });
             
          }
     };
